@@ -1,0 +1,22 @@
+description: Ultralytics YOLO11m model trained on /warpsat-1/data.yaml
+author: Ultralytics
+date: '2025-05-20T16:45:27.345546'
+version: 8.3.140
+license: AGPL-3.0 License (https://ultralytics.com/license)
+docs: https://docs.ultralytics.com
+stride: 32
+task: detect
+batch: 1
+imgsz:
+- 640
+- 640
+names:
+  0: aircraft
+  1: ship
+  2: vehicle
+args:
+  batch: 1
+  half: true
+  int8: false
+  nms: false
+channels: 3
