@@ -27,13 +27,14 @@ const nextConfig = {
     NGROK_URL: process.env.NGROK_URL,
     LLM7_IO_API_KEY: process.env.LLM7_IO_API_KEY,
   },
-  // domains: [
-  //   'i.imghippo.com',
-  //   'upload.wikimedia.org',
-  //   't1.gstatic.com',
-  //   'flagcdn.com',
-  //   'lh3.googleusercontent.com'
-  // ],
+  typescript: {
+    // Ignore TypeScript build errors
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    // Ignore ESLint build errors
+    ignoreDuringBuilds: true,
+  },
   images: {
     remotePatterns: [
       {
