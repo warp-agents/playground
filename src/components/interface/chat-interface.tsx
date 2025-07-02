@@ -200,8 +200,15 @@ import { GPTMessenger } from "./gpt-messenger"
 import { cn } from '@/lib/utils';
 import { Input } from "../ui/input"
 import { Header } from "./header"
+import { useHistory } from '@/contexts/HistoryContext';
 import { ChatSidebar } from "./chat-sidebar"
 import { getTranscriptsBySourceId } from "@/lib/dbs/supabase"
+import { toast } from "sonner"
+
+const placeholders = {
+  "chat": "Ask anything... or press 'space' for AI.",
+  "agents": "Describe any workflow... or press 'space' for AI.",
+}
    
 export function ChatInterface({
   type,
@@ -212,9 +219,16 @@ export function ChatInterface({
   id?: string;
   onChange?: (open: boolean) => void;
 }) {
+  const {
+    views,
+    addView
+  } = useHistory();
   const { isSearchDialogOpen, setIsSearchDialogOpen, isFilterDialogOpen, setIsFilterDialogOpen } = useGlobalContext()
+  const [shortcutFiles, setShortcutFiles] = useState<File[]>();
+  const [shortcutPrompt, setShortcutPrompt] = useState<string>();
   const [isRunningInference, setIsRunningInference] = useState(false)
-  const [transcript, setTranscript] = useState<any[]>([])
+  const [transcript, setTranscript] = useState<any[]>([]);
+
   const { data: session, status } = useSession();
 
   const isAuthenticated = status === "authenticated" && session
@@ -235,57 +249,91 @@ export function ChatInterface({
   }
   }, [isAuthenticated, userId, id])
 
-    const [expanded, setExpanded] = useState(false)
-    const [sourcesOpen, setSourcesOpen] = useState(true)
-    const [currentDept, setCurrentDept] = useState<any>(null)
-    const [showMore, setShowMore] = useState(false);
-    const [mode, setMode] = useState<'chat' | 'agents'>('chat')
+  const handleShortcut = (action: string) => {
+    let prompt = "";
+    switch (action) {
+      case "chart":
+        prompt = "Generate a line chart based on the following data: \n\n";
+        break;
+      case "write":
+        prompt = "Draft a professional proposal for this project.";
+        break;
+      case "contact":
+        prompt = "Create a message to contact the suppliers about this order.";
+        break;
+      case "email":
+        prompt = "Draft an email to manufacturers requesting a quote.";
+        break;
+      case "map":
+        prompt = "Show the map centered on the relevant location.";
+        break;
+      default:
+        prompt = "";
+    }
+  
+    if (prompt) {
+      setShortcutPrompt(prompt);
+    }
+  };
 
-    const [triggerCount, setTriggerCount] = useState(0)
-    const workflowCanvasRef = useRef<any>(null)
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = event.target.files;
+    if (fileList && fileList.length) {
+      const files = Array.from(fileList);
+      setShortcutFiles(files);
+    }
+  }
 
-    const handleAddTrigger = useCallback(() => {
-      const now = new Date()
-      const pad = (n: number) => n.toString().padStart(2, "0")
-      const currentDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
-      const currentTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`
+  const [expanded, setExpanded] = useState(!!views.length)
+  const [sourcesOpen, setSourcesOpen] = useState(true)
+  const [currentDept, setCurrentDept] = useState<any>(null)
+  const [showMore, setShowMore] = useState(false);
+  const [mode, setMode] = useState<'chat' | 'agents'>('chat')
 
-      const newTriggerNode = {
-          id: `trigger-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+  const [triggerCount, setTriggerCount] = useState(0)
+  const workflowCanvasRef = useRef<any>(null)
+
+  const handleAddTrigger = useCallback(() => {
+    const now = new Date()
+    const pad = (n: number) => n.toString().padStart(2, "0")
+    const currentDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+    const currentTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`
+
+    const newTriggerNode = {
+        id: `trigger-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        type: "trigger",
+        position: {
+          x: 200 + triggerCount * 50, 
+          y: 100 + triggerCount * 50,
+        },
+        data: {
+          label: "Trigger Node",
           type: "trigger",
-          position: {
-            x: 200 + triggerCount * 50, 
-            y: 100 + triggerCount * 50,
-          },
-          data: {
-            label: "Trigger Node",
-            type: "trigger",
-            triggerText: "",
-            cronEnabled: false,
-            cronDate: currentDate,
-            cronTime: currentTime,
-            cronFrequency: "daily",
-          },
-          draggable: true,
-          selectable: true,
-        }
+          triggerText: "",
+          cronEnabled: false,
+          cronDate: currentDate,
+          cronTime: currentTime,
+          cronFrequency: "daily",
+        },
+        draggable: true,
+        selectable: true,
+      }
 
-        if (workflowCanvasRef.current) {
-          workflowCanvasRef.current.addNode(newTriggerNode)
-        }
-        setTriggerCount((prev) => prev + 1)
-    }, [triggerCount])
+      if (workflowCanvasRef.current) {
+        workflowCanvasRef.current.addNode(newTriggerNode)
+      }
+      setTriggerCount((prev) => prev + 1)
+  }, [triggerCount])
 
     useEffect(() => {
       checkConnection()
     }, [])
 
-    useEffect(() => {
-      if(id){
-        
-
+    useEffect(() => { 
+      if(!!views.length){
+        setExpanded(true)
       }
-    }, [])
+    }, [views])
 
     return (
       <div className="flex h-screen w-screen relative">
@@ -338,15 +386,15 @@ export function ChatInterface({
                   mode === "chat" ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
                 )}>
                   <div className="flex w-full max-w-full flex-nowrap justify-start gap-2 overflow-x-auto px-2 md:mx-auto md:max-w-2xl md:flex-wrap md:justify-center md:pl-0" style={{scrollbarWidth: 'none'}}>
-                    <div className="rounded-full bg-background border-[1px] border-border px-4 py-3 flex items-center justify-center text-sm gap-2 cursor-pointer hover:bg-[#333333] whitespace-nowrap transition-colors duration-200">
+                    <div onClick={() => handleShortcut("chart")} className="rounded-full bg-background border-[1px] border-border px-4 py-3 flex items-center justify-center text-sm gap-2 cursor-pointer hover:bg-[#333333] whitespace-nowrap transition-colors duration-200">
                       <LuChartArea className="h-5 w-5 shrink-0" style={{ color: "#f55b89" }}/>
                       Generate chart
                     </div>
-                    <div className="rounded-full bg-background border-[1px] border-border px-4 py-3 flex items-center justify-center text-sm gap-2 cursor-pointer hover:bg-[#333333] whitespace-nowrap transition-colors duration-200">
+                    <div onClick={() => handleShortcut("write")} className="rounded-full bg-background border-[1px] border-border px-4 py-3 flex items-center justify-center text-sm gap-2 cursor-pointer hover:bg-[#333333] whitespace-nowrap transition-colors duration-200">
                       <PiPencilBold className="h-5 w-5 shrink-0" style={{ color: "#76d0eb" }} />
                       Write proposal
                     </div>
-                    <div className="rounded-full bg-background border-[1px] border-border px-4 py-3 flex items-center justify-center text-sm gap-2 cursor-pointer hover:bg-[#333333] whitespace-nowrap transition-colors duration-200">
+                    <div onClick={() => handleShortcut("contact")} className="rounded-full bg-background border-[1px] border-border px-4 py-3 flex items-center justify-center text-sm gap-2 cursor-pointer hover:bg-[#333333] whitespace-nowrap transition-colors duration-200">
                       <TbPhoneCall className="h-5 w-5 shrink-0" style={{ color: "#60c689" }} />
                       Contant suppliers
                     </div>
@@ -357,15 +405,23 @@ export function ChatInterface({
                     )}
                     {showMore && (
                       <>
-                        <div className="rounded-full bg-background border-[1px] border-border px-4 py-3 flex items-center justify-center text-sm gap-2 cursor-pointer hover:bg-[#333333] whitespace-nowrap transition-colors duration-200">
+                        <div onClick={() => (document.getElementById("gpt-textarea") as HTMLInputElement).click()} className="rounded-full bg-background border-[1px] border-border px-4 py-3 flex items-center justify-center text-sm gap-2 cursor-pointer hover:bg-[#333333] whitespace-nowrap transition-colors duration-200">
                           <MdOutlineDocumentScanner className="h-5 w-5 shrink-0" style={{ color: "#8b5cf6" }} />
                           Process files
                         </div>
-                        <div className="rounded-full bg-background border-[1px] border-border px-4 py-3 flex items-center justify-center text-sm gap-2 cursor-pointer hover:bg-[#333333] whitespace-nowrap transition-colors duration-200">
+                        <input 
+                          id={"gpt-textarea"} 
+                          type="file" 
+                          accept=".pdf,.xlsx,.xls,.doc,.docx,.csv,.zip,.rar,.jpeg,.jpg,.png"
+                          multiple 
+                          hidden 
+                          onChange={handleFileChange}
+                        />
+                        <div onClick={() => handleShortcut("email")} className="rounded-full bg-background border-[1px] border-border px-4 py-3 flex items-center justify-center text-sm gap-2 cursor-pointer hover:bg-[#333333] whitespace-nowrap transition-colors duration-200">
                           <HiOutlineMailOpen className="h-5 w-5 shrink-0" style={{ color: "#5180ed" }}/>
                           Email manufacturers
                         </div>
-                        <div className="rounded-full bg-background border-[1px] border-border px-4 py-3 flex items-center justify-center text-sm gap-2 cursor-pointer hover:bg-[#333333] whitespace-nowrap transition-colors duration-200">
+                        <div onClick={() => handleShortcut("map")} className="rounded-full bg-background border-[1px] border-border px-4 py-3 flex items-center justify-center text-sm gap-2 cursor-pointer hover:bg-[#333333] whitespace-nowrap transition-colors duration-200">
                           <LuMapPinned className="h-5 w-5 shrink-0" style={{ color: "#eab308" }}/>
                           View map
                         </div>
@@ -378,7 +434,7 @@ export function ChatInterface({
                 "relative z-10 px-2 pb-3 sm:pb-4 transition-all duration-500 ease-in-out",
                 !transcript.length && mode === "chat" ? "order-2 md:order-1" : "order-1"
               )}>
-              <GPTTextareaForm id="gpt-textarea" placeholder="Ask anything, or press 'space' for AI." disclaimer="Results are generated by AI and may make mistakes or be inaccurate. Double check documentation thoroughly." chatId={id} allowAttachments allowAudio allowFilter allowWebSearch={mode === "chat"} allowAgents autoSize onModeChange={setMode} onInferenceStateChange={setIsRunningInference} className="border-none" />
+              <GPTTextareaForm id="gpt-textarea" placeholder={placeholders[mode]} disclaimer="Results are generated by AI and may make mistakes or be inaccurate. Double check documentation thoroughly." chatId={id} shortcutFiles={shortcutFiles} shortcutPrompt={shortcutPrompt} onShortcutFilesChange={setShortcutFiles} allowAttachments allowAudio allowFilter allowWebSearch={mode === "chat"} allowAgents autoSize onModeChange={setMode} onInferenceStateChange={setIsRunningInference} className="border-none" />
               </div>
             </div>
           </div>
@@ -498,6 +554,7 @@ const nodeTypes = [
 ]
 
 export function WorkflowSidebar({ onTriggerClick }: { onTriggerClick: () => void }) {
+  const [limit, setLimit] = useState(true)
   const [mode, setMode] = React.useState<OperationalMode>("auto")
   const [selectedCategory, setSelectedCategory] = React.useState<string>("all")
   const [sortBy, setSortBy] = React.useState<SortOption>("name")
@@ -524,7 +581,12 @@ export function WorkflowSidebar({ onTriggerClick }: { onTriggerClick: () => void
   }
 
   const handleAddTrigger = () => {
-    console.log("Add trigger clicked")
+    if(limit) {
+      toast.error("Workflow limit reached", {
+        description: "The system is currently under heavy load. Please try again in a moment.",
+      })
+      return
+    }
     onTriggerClick()  
   }
 

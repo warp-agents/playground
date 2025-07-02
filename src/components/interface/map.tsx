@@ -559,12 +559,12 @@ function ObjectDetectionBBoxLayer({
                 description: "Objects have been detected and geo-referenced.",
               });
             } else {
-                console.error("Model prediction did not return a single tensor or was null:", result);
+                // console.error("Model prediction did not return a single tensor or was null:", result);
                 toast.error("Prediction error", { description: "Model output was not in the expected format." });
             }
 
           } catch (error) {
-            console.error("TensorFlow.js inference error:", error);
+            // console.error("TensorFlow.js inference error:", error);
             toast.error("Object detection failed", {
               description: `There was an error running the model inference. ${error instanceof Error ? error.message : String(error)}`,
             });
@@ -572,7 +572,7 @@ function ObjectDetectionBBoxLayer({
             tf.dispose([tensor, normalizedTensor, result].filter(t => t !== null) as tf.Tensor[]); // Dispose all used tensors
           }
         }).catch(err => {
-          console.error("Canvas capture error:", err);
+          // console.error("Canvas capture error:", err);
           layersToRemove.forEach(layer => {
             if (!map.hasLayer(layer)) map.addLayer(layer);
           });
@@ -1112,7 +1112,7 @@ function ReverseImageSearch({
       
         if (!response.ok) {
           const errorData = await response.json();
-          console.error('Error:', errorData);
+          // console.error('Error:', errorData);
           throw new Error(errorData.error || 'Failed to query embeddings');
         }
       

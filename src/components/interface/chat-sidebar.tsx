@@ -30,7 +30,7 @@ import {
 import { Icons } from "@/components/ui/icons"
 import { useSidebar } from "@/components/ui/sidebar"
 import { TextEffect } from "@/components/core/text-effect"
-import { getChatsByUserId, getTranscriptsBySourceId, updateChat } from "@/lib/dbs/supabase"
+import { getChatsByUserId, getTranscriptsBySourceId, updateChat, deleteChat } from "@/lib/dbs/supabase"
 import { ngrokUrl } from "@/lib/utils"
 
 function Logo() {
@@ -68,13 +68,12 @@ export function ChatItem({ chat }: ChatItemProps) {
       const baseUrl = ngrokUrl || process.env.NGROK_URL;
 
       const body = JSON.stringify({
-        system_prompt:
-          "You are a helpful writing assistant. Return **one** short sentence that summarizes the following text. The sentence should be more than **5 words**.",
-        model: "gpt-4o-mini-2024-07-18",
+        system_prompt: `You are a helpful writing assistant. Return one short title that summarizes the following text. The sentence should be more than 5 words. Only return the sentence, do not include any explanation, labels, or extra text.
+      Text:\n\n`,
         prompt: prompt,
       });
 
-      const response = await fetch(`${baseUrl}/generate`, {
+      const response = await fetch(`${baseUrl}/generate-lite`, {
         method: "POST",
         headers,
         body,
@@ -164,6 +163,7 @@ export function ChatItem({ chat }: ChatItemProps) {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                deleteChat(chat.id)
               }}
             >
               <Trash2 className="h-3 w-3" />
@@ -242,11 +242,34 @@ export function ChatSidebar() {
   const pinnedChats: any[] = allChats.filter((chat) => chat?.pinned)
   const unpinnedChats: any[] = allChats.filter((chat) => !chat?.pinned)
 
-  const todayChats = unpinnedChats.filter((chat) => chat.createdAt >= today)
-  const yesterdayChats = unpinnedChats.filter((chat) => chat.createdAt >= yesterday && chat.createdAt < today)
-  const thisWeekChats = unpinnedChats.filter((chat) => chat.createdAt >= startOfWeek && chat.createdAt < yesterday)
-  const thisMonthChats = unpinnedChats.filter((chat) => chat.createdAt >= startOfMonth && chat.createdAt < startOfWeek)
-  const pastChats = unpinnedChats.filter((chat) => chat.createdAt < startOfMonth)
+  const sortedUnpinnedChats = [...unpinnedChats].sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+  );
+  
+  const todayChats: any[] = [];
+  const yesterdayChats: any[] = [];
+  const thisWeekChats: any[] = [];
+  const thisMonthChats: any[] = [];
+  const pastChats: any[] = [];
+  
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(today.getDate() - 30);
+  
+  for (const chat of sortedUnpinnedChats) {
+    const created = chat.createdAt;
+  
+    if (created >= today) {
+      todayChats.push(chat);
+    } else if (created >= yesterday) {
+      yesterdayChats.push(chat);
+    } else if (created >= startOfWeek) {
+      thisWeekChats.push(chat);
+    } else if (created >= thirtyDaysAgo) {
+      thisMonthChats.push(chat);
+    } else {
+      pastChats.push(chat);
+    }
+  }
 
   const handleSignOut = () => {
     signOut({ callbackUrl: window.location.origin })

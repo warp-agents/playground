@@ -50,10 +50,12 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig, Ch
 import { MapContainer, TileLayer } from "react-leaflet";
 import { TextShimmer } from '@/components/core/text-shimmer';
 import { TextEffect, type TextEffectProps } from "@/components/core/text-effect";
+import { useHistory } from '@/contexts/HistoryContext';
 import rehypeRaw from 'rehype-raw';
 import "leaflet/dist/leaflet.css";
 import dynamic from 'next/dynamic';
 import { ngrokUrl } from "@/lib/utils"
+import { v4 as uuidv4 } from 'uuid';
 
 export function FileAttachment({ filename, content, downloadable = false }: { filename: string, content: string, downloadable?: boolean }) {
   const [imageError, setImageError] = useState(false);
@@ -81,7 +83,7 @@ export function FileAttachment({ filename, content, downloadable = false }: { fi
   }[fileExtension] || { bgColor: "bg-gray-900", icon: <File className="text-gray-300 h-5 w-5" />, label: "File" };
   
   return (
-    <div className="p-1.5 pl-2 pr-3 flex items-center justify-between rounded-xl border border-border  w-fit bg-sidebar/50 cursor-default mb-1">
+    <div className="p-1.5 pl-2 pr-3 flex items-center justify-between rounded-xl border border-border w-fit bg-sidebar/50 cursor-default mb-1">
       <div className="flex gap-2 items-center">
         <div className={`flex items-center justify-center rounded-md ${isImageFile && !imageError ? "p-0 bg-transparent" : `p-1.5 ${fileProperties.bgColor}`}`}>
           {/* Fix this later */}
@@ -97,7 +99,7 @@ export function FileAttachment({ filename, content, downloadable = false }: { fi
           )}
         </div>
         <div className="flex flex-col">
-          <div className="text-white text-sm truncate max-w-[200px]">{filename}</div>
+          <div className="text-white text-sm truncate w-[200px]">{filename}</div>
           <div className="text-muted-foreground text-xs">{fileProperties.label}</div>
         </div>
       </div>
@@ -347,11 +349,7 @@ export function GPTMessenger({
                 )}
                   <div className="flex gap-2 py-3 px-1">
                     <div className="p-[4px] w-full border-none">
-                        {/* <MarkdownRenderer 
-                          content={cleanedContent} 
-                          sources={sourcesMap} 
-                        /> */}
-                        <AnimatedMarkdownRenderer 
+                        <MarkdownRenderer 
                           content={cleanedContent} 
                           sources={sourcesMap} 
                           isLastMessage={index === transcript.length - 1 && differenceInMinutes(new Date(), new Date((message as any)?.createdAt)) <= 2}
@@ -417,9 +415,10 @@ export function GPTMessenger({
                     <ScrollBar orientation="horizontal" />
                   </ScrollArea>
                 )}
-                {cleanedContent && <div className="flex flex-col gap-2 group">
-                  <div className="bg-sidebar-accent/50 rounded-lg p-3 border border-muted-foreground/5 min-w-[150px] max-w-3/5 w-fit">
-                    <div className="text-primary">{cleanedContent}</div>
+                {cleanedContent && 
+                <div className="flex flex-col gap-2 group">
+                  <div className="bg-sidebar-accent/50 rounded-2xl p-3 px-4 border border-muted-foreground/5 min-w-0 max-w-3/5">
+                    <div className="text-primary break-words">{cleanedContent}</div>
                   </div>
                   <div className="flex items-center self-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                       <TooltipProvider>
@@ -482,12 +481,11 @@ const GeneratedSummary = ({ prompt }: { prompt: string }) => {
       const baseUrl = ngrokUrl || process.env.NGROK_URL;
 
       const body = JSON.stringify({
-        system_prompt: "You are a helpful writing assistant. Return **one** short sentence that summarizes the following text. The sentence should be more than **8 words**.",
-        model: "gpt-4o-mini-2024-07-18",
+        system_prompt: "You are a helpful writing assistant. Return **one** short sentence that summarizes the following text. The sentence should be more than **8 words**. Only return the sentence, do not include any explanation, labels, or extra text.",
         prompt: prompt,
       });
 
-      const response = await fetch(`${baseUrl}/generate`, {
+      const response = await fetch(`${baseUrl}/generate-lite`, {
         method: 'POST',
         headers,
         body,
@@ -495,14 +493,14 @@ const GeneratedSummary = ({ prompt }: { prompt: string }) => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null); 
-        console.error('Error response data:', errorData);
+        // console.error('Error response data:', errorData);
         throw new Error(`Error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
       return data.response
     } catch (error) {
-      console.error('Failed to generate text:', error);
+      // console.error('Failed to generate text:', error);
     }
     return prompt
   } 
@@ -526,85 +524,6 @@ const GeneratedSummary = ({ prompt }: { prompt: string }) => {
   return <>{summary}</>;
 };
 
-function AnimatedMarkdownRenderer({
-  content,
-  sources,
-  isLastMessage
-}: {
-  content: string;
-  sources: Map<string, { title: string; description: string; url: string }>;
-  isLastMessage: boolean;
-}) {
-  const [showAnimation, setShowAnimation] = useState(isLastMessage);
-  const [reservedHeight, setReservedHeight] = useState<number | null>(null);
-  const measureRef = useRef<HTMLDivElement>(null);
-
-  const getPlainText = (markdown: string) => {
-    return markdown
-      .replace(/```[\s\S]*?```/g, '') // Remove code blocks
-      .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold
-      .replace(/\*([^*]+)\*/g, '$1') // Remove italic
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove links
-      .replace(/^#+\s+/gm, '') // Remove headers
-      .replace(/^\s*[-*+]\s+/gm, '') // Remove list markers
-      .replace(/^\s*\d+\.\s+/gm, '') // Remove numbered list markers
-      .replace(/\n\s*\n/g, '\n') // Remove extra newlines
-      .trim();
-  };
-
-  // Measure the final height when component mounts
-  useEffect(() => {
-    if (isLastMessage && showAnimation && measureRef.current) {
-      // Temporarily render the final content to measure height
-      const tempDiv = document.createElement('div');
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.visibility = 'hidden';
-      tempDiv.style.pointerEvents = 'none';
-      tempDiv.style.width = `${measureRef.current.offsetWidth}px`;
-      tempDiv.className = measureRef.current.className;
-      tempDiv.textContent = getPlainText(content);
-      
-      document.body.appendChild(tempDiv);
-      const height = tempDiv.offsetHeight;
-      document.body.removeChild(tempDiv);
-      
-      setReservedHeight(height);
-    }
-  }, [content, isLastMessage, showAnimation]);
-
-  if (isLastMessage && showAnimation) {
-    const plainText = getPlainText(content);
-
-    return (
-      <div 
-        ref={measureRef}
-        className="prose prose-invert max-w-none"
-        style={{ 
-          minHeight: reservedHeight ? `${reservedHeight}px` : 'auto',
-          // Prevent layout shift during animation
-          contain: 'layout'
-        }}
-      >
-        <TextEffect
-          per="char"
-          preset="fade"
-          speedReveal={2}
-          speedSegment={2}
-          delay={0.1}
-          className="text-gray-200 leading-relaxed"
-          onAnimationComplete={() => {
-            setTimeout(() => setShowAnimation(false), 500);
-          }}
-        >
-          {plainText}
-        </TextEffect>
-      </div>
-    );
-  }
-
-  return <MarkdownRenderer content={content} sources={sources} isLastMessage={isLastMessage} />;
-}
-
 export function MarkdownRenderer({ 
   content,
   sources,
@@ -614,6 +533,7 @@ export function MarkdownRenderer({
   sources: Map<string, { title: string; description: string; url: string }>
   isLastMessage: boolean
 }) {
+  const { addView }  = useHistory()
   const { actionHandler, setActionHandler } = useGlobalContext()
 
   useEffect(() => {
@@ -626,7 +546,7 @@ export function MarkdownRenderer({
         const actionData = JSON.parse(match[1].trim());
         setActionHandler(actionData);
       } catch (error) {
-        console.error("Error parsing action data from markdown:", error);
+        // console.error("Error parsing action data from markdown:", error);
       }
     }
   }, [content, setActionHandler]);
@@ -652,6 +572,35 @@ export function MarkdownRenderer({
   };
 
   const processedContent = processFootnotes(content);
+
+  const [displayedContent, setDisplayedContent] = useState(isLastMessage ? '' : processedContent);
+  const [isComplete, setIsComplete] = useState(!isLastMessage);
+  
+  useEffect(() => {
+    if (!isLastMessage) {
+      setDisplayedContent(processedContent);
+      setIsComplete(true);
+      return;
+    }
+
+    setIsComplete(false);
+    setDisplayedContent('');
+    
+    let currentIndex = 0;
+    const speed = 20; 
+
+    const timer = setInterval(() => {
+      currentIndex++;
+      if (currentIndex > processedContent.length) {
+        clearInterval(timer);
+        setIsComplete(true);
+      } else {
+        setDisplayedContent(processedContent.substring(0, currentIndex));
+      }
+    }, speed);
+    
+    return () => clearInterval(timer);
+  }, [processedContent, isLastMessage]);
 
   return (
     <div className="prose prose-invert max-w-none">
@@ -776,12 +725,12 @@ export function MarkdownRenderer({
                   <div className="flex flex-col w-full max-w-[500px]">
                     <div className="flex w-full py-2.5 px-3 bg-sidebar rounded-lg rounded-b-none justify-between items-center border border-border border-b-0">
                       <div className="text-xs text-muted-foreground truncate whitespace-nowrap overflow-hidden max-w-[300px]">
-                      <GeneratedSummary prompt={`Generate a summary of the map using the following text: \n\n${content}`} />
+                      <GeneratedSummary prompt={`Use the coordinates below to provide the location of the map: \n\n${coordinates.lat}, ${coordinates.lng}`} />
                         </div>
                       <MoreHorizontal className="h-5 w-5 text-muted-foreground"/>
                     </div>
                   <Card className="w-full max-w-[500px] aspect-[4/3] group rounded-t-none">
-                    <CardContent className="h-full w-full p-0 relative" onClick={() => {}}>
+                    <CardContent className="h-full w-full p-0 relative">
                       <div className="w-full h-full rounded-lg overflow-hidden rounded-t-none">
                       <MapPreview
                         focalPoint={coordinates}
@@ -791,6 +740,7 @@ export function MarkdownRenderer({
 
                       <div className="absolute inset-0 flex items-center justify-center rounded-lg pointer-events-none opacity-0 group-hover:opacity-100 group-hover:backdrop-blur-sm transition-opacity duration-200">
                         <div
+                         onClick={() => addView({ type: 'map', data: { focalPoint: coordinates, isSatelliteMode: satellite } })}
                           className="bg-background/80 backdrop-blur-md text-sm px-3 py-1.5 rounded-md flex items-center gap-2 pointer-events-auto hover:bg-background"
                         >
                           <ExternalLink className="w-4 h-4" />
@@ -847,7 +797,7 @@ export function MarkdownRenderer({
                   <div className="flex flex-col w-full max-w-[500px]">
                     <div className="flex w-full py-2.5 px-3 bg-input rounded-lg rounded-b-none justify-between items-center border border-border border-b-0">
                       <div className="text-xs text-muted-foreground truncate overflow-hidden max-w-[300px]">
-                      <GeneratedSummary prompt={`Generate a summary of the ${lang} chart using the following text: \n\n${content}`} />
+                      <GeneratedSummary prompt={`Generate a summary of the ${lang} chart data using the following text: \n\n${content}`} />
                         </div>
                       <MoreHorizontal className="h-5 w-5 text-muted-foreground"/>
                     </div>
@@ -1010,8 +960,11 @@ export function MarkdownRenderer({
           ),
         }}
       >
-        {processedContent}
+        {displayedContent}
       </ReactMarkdown>
+      {!isComplete && (
+        <span className="inline-block w-0.5 h-5 bg-blue-400 ml-1 animate-pulse" />
+      )}
     </div>
   );
 }

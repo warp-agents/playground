@@ -71,18 +71,17 @@ export async function getProposalsByUserId(userId: string) {
 }
   
 export async function createChat(userId: string, name?: string) {
-    const id = uuidv4()
+  const id = uuidv4()
 
-    const { error } = await supabase.from('chats').insert({
-        id,
-        user_id: userId,
-        name: name ?? null
-    })
+  const { error } = await supabase.from('chats').insert({
+      id,
+      user_id: userId,
+      name: name ?? null
+  })
 
-    if (error) throw new Error('Failed to create chat')
+  if (error) throw new Error('Failed to create chat')
 
-    // redirect(`/c/${id}`)
-    return id
+  return id
 }
 
 export async function updateChat(chatId: string, newName: string) {
@@ -95,6 +94,15 @@ export async function updateChat(chatId: string, newName: string) {
     throw new Error(`Failed to update chat name: ${error.message}`)
   }
   return data
+}
+
+export async function deleteChat(chatId: string) {
+  const { error } = await supabase
+    .from("chats")
+    .delete()
+    .eq("id", chatId);
+
+  return { error };
 }
 
 export async function getChatsByUserId(userId: string) {

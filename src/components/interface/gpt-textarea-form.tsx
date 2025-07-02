@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useEffect, useState } from "react"
+import { useRef, useEffect, useState, use } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -142,6 +142,7 @@ import { createChat, addTranscript } from "@/lib/dbs/supabase"
 import { useSession } from "next-auth/react"
 import { redirect } from 'next/navigation'
 import { cn, ngrokUrl } from '@/lib/utils';
+import { v4 as uuidv4 } from 'uuid';
 
 const FormSchema = z.object({
   bio: z
@@ -162,6 +163,7 @@ type UploadFile = {
 }
 
 export function GPTTextareaForm({ 
+  extend=false,
   id,
   chatId,
   placeholder, 
@@ -176,10 +178,16 @@ export function GPTTextareaForm({
   autoSize=false, 
   direction="up",
   className, 
+  shortcutFiles,
+  shortcutPrompt,
+  onShortcutFilesChange,
   onModeChange,
   onInferenceStateChange, 
   onInferenceComplete,
+  onUserInput,
+  onSystemInput,
 }: { 
+  extend?: boolean,
   id: string,
   chatId?: string,
   placeholder: string, 
@@ -194,9 +202,25 @@ export function GPTTextareaForm({
   autoSize?: boolean, 
   direction?: "up" | "right" | "down" | "left",
   className?: string, 
+  shortcutFiles?: File[],
+  shortcutPrompt?: string,
+  onShortcutFilesChange?: (files: File[]) => void,
   onModeChange?: (mode: 'chat' | 'agents') => void
   onInferenceStateChange?: (state: boolean) => void
   onInferenceComplete? : (data: any) => void
+  //
+  onUserInput?: (input: {
+    content: string,
+    createdAt: Date,
+    id: string,
+    system?: boolean
+  }) => void
+  onSystemInput?: (input: {
+    content: string,
+    createdAt: Date,
+    id: string,
+    system?: boolean
+  }) => void
   }) {
   const { data: session, status } = useSession()
   const { isFilterDialogOpen, setIsFilterDialogOpen } = useGlobalContext()
@@ -214,6 +238,8 @@ export function GPTTextareaForm({
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const previouslySubmitted = useRef<z.infer<typeof FormSchema> | null>(null);
+
+  const isAuthenticated = status === "authenticated" && session
 
   const { transcript, browserSupportsSpeechRecognition, resetTranscript, listening } = useSpeechRecognition()
 
@@ -234,13 +260,32 @@ export function GPTTextareaForm({
   };
 
   async function onSubmit(data: z.infer<typeof FormSchema>) {
+    const id = (session as any)?.user?.id
+    let content = prompt; 
+
+    if (selectedFiles && selectedFiles.length > 0) {
+      const fileMarkdownLinks = selectedFiles
+        .map(file => `[${file.file.name}](${file.file.name})`)
+        .join('\n');
+      
+      content = `${fileMarkdownLinks}\n\n${prompt}`;
+    }
+
     previouslySubmitted.current = data;
     setIsRunningInference(true)
     onInferenceStateChange?.(true)
-    if(!chatId){
-      const chatId = await createChat((session as any)?.user?.id,)
-      await addTranscript({sourceType: "chat", sourceId: chatId, content: prompt, system: false})
+    if(!chatId && !extend && id){
+      const chatId = await createChat(id)
+      await addTranscript({sourceType: "chat", sourceId: chatId, content: content, system: false})
       redirect(`/c/${chatId}`)
+    }
+    if(extend){
+      onUserInput?.({
+        content: content,
+        createdAt: new Date(),
+        id: uuidv4(),
+        system: false
+      })
     }
     try {
       const processedFiles = await Promise.all(
@@ -281,17 +326,26 @@ export function GPTTextareaForm({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null); 
-        console.error('Error response data:', errorData);
+        // console.error('Error response data:', errorData);
         throw new Error(`Error: ${response.status} ${response.statusText}`);
       }
 
       const responseData = await response.json();
-      console.log("Success:", responseData);
-      
-      clearAllFiles()
-      setPrompt('')
+      const content = responseData.response
+
+      if(!extend && id){
+        const chatId = await createChat(id)
+        await addTranscript({sourceType: "chat", sourceId: chatId, content: content, system: true})
+      }else if(extend){
+        onSystemInput?.({
+          content: content,
+          createdAt: new Date(),
+          id: uuidv4(),
+          system: true
+        })
+      }
     } catch (err) {
-      console.error("Fetch failed:", err);
+      // console.error("Fetch failed:", err);
       toast.error("Error getting LLM response", {
         description: "Please try again.",
         action: {
@@ -306,6 +360,9 @@ export function GPTTextareaForm({
     }finally{
       setIsRunningInference(false)
       onInferenceStateChange?.(false)  
+      setPrompt('')
+      clearAllFiles()
+      setFiles([])
     }
   }
 
@@ -465,7 +522,7 @@ export function GPTTextareaForm({
         toast("Delete failed",{
           description: "Could not delete all files. Please try again.",
         });
-        console.error(error);
+        // console.error(error);
       });
   };
   
@@ -534,6 +591,31 @@ export function GPTTextareaForm({
       });
     }
   }, [prompt])
+
+  useEffect(() => {
+    if (shortcutFiles && shortcutFiles.length > 0) {
+      const filesWithLoadingState = shortcutFiles.map((file: File) => ({
+        file,
+        isLoading: true,
+        progress: 0
+      }));
+      
+      const limitedFiles = filesWithLoadingState.slice(0, 3 - selectedFiles.length);
+      setSelectedFiles(prev => [...prev, ...limitedFiles]);
+      
+      limitedFiles.forEach((fileInfo) => {
+        uploadFile(fileInfo);
+      });
+      
+      onShortcutFilesChange?.([]);
+    }
+  }, [shortcutFiles])
+
+  useEffect(() => {
+    if(shortcutPrompt){
+      setPrompt(shortcutPrompt)
+    }
+  }, [shortcutPrompt])
 
   const renderTools = () => (
       <>
@@ -682,7 +764,9 @@ export function GPTTextareaForm({
                                     isDeletingIndex === index && "animate-pulse")}
                                 >
                                   <div
-                                    className={`flex items-center justify-center rounded-md ${fileProperties.bgColor} ${fileProperties.label === "Image" ? "p-0" : "p-2"}`}
+                                    className={cn(`flex items-center justify-center rounded-md`, 
+                                     fileProperties.bgColor,
+                                     fileProperties.label === "Image" && !isLoading ? "p-0" : "p-2")}
                                   >
                                     {isLoading ? (
                                       <Icons.loader percentage={fileInfo.progress} size={20} strokeWidth={3} className={fileProperties.fgColor} />
@@ -690,7 +774,7 @@ export function GPTTextareaForm({
                                       <img 
                                         src={URL.createObjectURL(file)} 
                                         alt={file.name}
-                                        className="h-[36px] w-[36px] object-cover rounded"
+                                        className="h-[36px] w-[36px] object-cover rounded-md"
                                       />
                                     ) : (
                                       fileProperties.icon
@@ -731,7 +815,7 @@ export function GPTTextareaForm({
                       <div className="w-full h-fit">
                         <AutosizeTextarea
                           placeholder={placeholder}
-                          className={`resize-none w-full ${className} border border-border px-4 pt-3 pb-12 rounded-b-none h-[60px] text-base ${selectedFiles.length !== 0 ? '!rounded-t-none' : '!rounded-t-2xl'}`}
+                          className={`resize-none w-full ${className} px-4 pt-3 pb-12 rounded-b-none h-[60px] text-base ${selectedFiles.length !== 0 ? '!rounded-t-none' : '!rounded-t-2xl'}`}
                           maxHeight={200}
                           maxLength={800}
                           value={prompt+transcript}
@@ -748,7 +832,7 @@ export function GPTTextareaForm({
                     :
                       <Textarea
                         placeholder={placeholder}
-                        className={`resize-none w-full ${className} border border-border px-4 pt-3 pb-12 rounded-b-none text-base ${selectedFiles.length !== 0 ? '!rounded-t-none' : '!rounded-t-2xl'}`}
+                        className={`resize-none w-full ${className} px-4 pt-3 pb-12 rounded-b-none text-base ${selectedFiles.length !== 0 ? '!rounded-t-none' : '!rounded-t-2xl'}`}
                         {...field}
                         value={prompt}
                         onChange={(e) => {
@@ -847,7 +931,7 @@ export function GPTTextareaForm({
                         </DropdownMenu>
                         <Separator orientation="vertical" className="h-4 w-[0.5px] m-[1.5px] bg-muted-foreground/50 flex shrink-0" />
                       </div>}
-                      { !isRunningInference ? <Button variant="ghost" type="submit" disabled={hasExceededMinLength || isRunningInference || isLoading} className="bg-transparent" size="icon">
+                      { !isRunningInference ? <Button variant="ghost" type="submit" disabled={hasExceededMinLength || isRunningInference || isLoading || !isAuthenticated || mode === "agents"} className="bg-transparent" size="icon">
                          { direction === "right" ? <ArrowRight/> : <ArrowUp /> }
                       </Button>:
                       <Button variant="ghost" className="bg-transparent" size="icon">

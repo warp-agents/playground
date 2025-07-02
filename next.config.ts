@@ -24,7 +24,6 @@ const nextConfig = {
     QDRANT_API_KEY: process.env.QDRANT_API_KEY,
     SUPABASE_URL: process.env.SUPABASE_URL,
     SUPABASE_API_KEY: process.env.SUPABASE_API_KEY,
-    NGROK_URL: process.env.NGROK_URL,
     LLM7_IO_API_KEY: process.env.LLM7_IO_API_KEY,
   },
   typescript: {

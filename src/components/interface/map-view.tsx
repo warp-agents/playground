@@ -80,7 +80,7 @@ const Map = dynamic(() => import('./map'), {
   ssr: false
 })
 
-export default function MapView() {
+export default function MapView({ data }: { data?: any }) {
   const { actionHandler, setActionHandler } = useGlobalContext()
   const { theme } = useTheme();
   const { activeMode, setActiveMode, setIsClearingAll } = useMapControlsContext();
@@ -732,7 +732,7 @@ export default function MapView() {
           }
         }
       } catch (error) {
-        console.error("Error searching region:", error);
+        // console.error("Error searching region:", error);
       }
     };
 
@@ -741,6 +741,12 @@ export default function MapView() {
 
   useEffect(() => {
   },[selectedLandmark])
+  
+  useEffect(() => {
+    if(!data) return
+    setIsSatelliteMode(data.isSatelliteMode)
+    setFocalPoint(data.focalPoint)
+  }, [data])
   
   useEffect(() => {
     setMounted(true);

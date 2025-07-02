@@ -2,19 +2,19 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { ExpandedViewType } from '@/lib/types';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface View {
   id: string;
   type: ExpandedViewType;
   data?: any;
-  timestamp: number;
 }
 
 interface HistoryContextType {
   views: View[];
   currentIndex: number;
   currentView: View | null;
-  addView: (view: Omit<View, 'id' | 'timestamp'>) => void;
+  addView: (view: Omit<View, 'id'>) => void;
   goForward: () => void;
   goBackward: () => void;
   clearHistory: () => void;
@@ -44,11 +44,10 @@ export function HistoryProvider({ children }: HistoryProviderProps) {
   const canGoForward = currentIndex < views.length - 1;
   const canGoBackward = currentIndex > 0;
 
-  const addView = (viewData: Omit<View, 'id' | 'timestamp'>) => {
+  const addView = (viewData: Omit<View, 'id'>) => {
     const newView: View = {
       ...viewData,
-      id: `${viewData.type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: Date.now(),
+      id: uuidv4(),
     };
 
     const newViews = views.slice(0, currentIndex + 1);

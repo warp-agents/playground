@@ -61,6 +61,7 @@ import "@xyflow/react/dist/style.css"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { DropdownMenuSeparator } from "@radix-ui/react-dropdown-menu"
 import SyntaxHighlightedInput from "@/components/ui/syntax-highlighted-input"
+import { toast } from "sonner"
 
 export const agentColors = {
   start: "#e5e7eb", // gray
@@ -1382,159 +1383,159 @@ const edgeTypes = {
 }
 
 // Updated initial nodes with all data self-contained
-const initialNodes = [
-  {
-    id: "node-start",
-    type: "default",
-    position: { x: 400, y: 0 },
-    draggable: true,
-    selectable: true,
-    data: { label: "Starting Point", type: "start" }, // Start node is simpler
-  },
-  {
-    id: "node-webSearch-1",
-    type: "default",
-    position: { x: 400, y: 150 },
-    data: {
-      instanceId: "webSearch-1",
-      name: "Web Search Agent",
-      type: "webSearch",
-      label: "Web Search Agent",
-      status: "pending",
-      prompt: "Find the latest research on AI workflow automation",
-      model: "DeepSeek-R1",
-      files: [
-        { id: "wsf1", name: "research-paper.pdf", type: "application/pdf", size: 1536000 },
-        { id: "wsf2", name: "data-export.csv", type: "text/csv", size: 64000 },
-      ],
-      feedback: { agent: "none", execution: "none", prompt: "none" },
-      payload: { query: "", results: [] },
-    },
-  },
-  {
-    id: "node-voice-1",
-    type: "default",
-    position: { x: 400, y: 350 },
-    data: {
-      instanceId: "voice-1",
-      name: "Voice Agent",
-      type: "voice",
-      label: "Voice Agent",
-      status: "intervention",
-      prompt: "Schedule a meeting with the project team for next week",
-      model: "LLAMA 3.2",
-      progress: 45,
-      lastRun: "5 min ago",
-      failureReason: "Unable to access calendar system due to authentication error",
-      files: [
-        { id: "vf1", name: "voice-notes.txt", type: "text/plain", size: 1024 },
-        { id: "vf2", name: "contract.pdf", type: "application/pdf", size: 512000 },
-      ],
-      feedback: { agent: "none", execution: "none", prompt: "none" },
-      payload: { transcript: "", summary: [] },
-    },
-  },
-  {
-    id: "node-email-1",
-    type: "default",
-    position: { x: 400, y: 550 },
-    data: {
-      instanceId: "email-1",
-      name: "Email Agent",
-      type: "email",
-      label: "Email Agent",
-      status: "pending",
-      prompt: "Draft a follow-up email to the client about project status",
-      model: "Gemini-2.5-Pro-Exp-03-25",
-      files: [
-        { id: "ef1", name: "contract.pdf", type: "application/pdf", size: 512000 },
-        { id: "ef2", name: "proposal.docx", type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", size: 256000 },
-      ],
-      feedback: { agent: "none", execution: "none", prompt: "none" },
-      payload: { subject: "", content: "", history: [] },
-    },
-  },
-  {
-    id: "node-spreadsheet-1",
-    type: "default",
-    position: { x: 400, y: 750 },
-    data: {
-      instanceId: "spreadsheet-1",
-      name: "Spreadsheet Agent",
-      type: "spreadsheet",
-      label: "Spreadsheet Agent",
-      status: "success",
-      prompt: "Analyze Q1-Q4 expenses and create a summary report",
-      model: "Gemini-2.5-Pro-Exp-03-25",
-      progress: 100,
-      lastRun: "2 min ago",
-      files: [
-        { id: "ssf1", name: "quarterly-data.xlsx", type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", size: 1024000 },
-        { id: "ssf2", name: "report.pdf", type: "application/pdf", size: 512000 },
-      ],
-      feedback: { agent: "none", execution: "none", prompt: "none" },
-      payload: {
-        rows: [
-          ["A", "B", "C"],
-          ["Q1 Expenses", "12,500", "25%"],
-          ["Q2 Expenses", "15,750", "31%"],
-          ["Q3 Expenses", "9,800", "19%"],
-          ["Q4 Expenses", "12,300", "25%"],
-          ["Total", "$50,350", "100%"],
-        ],
-      },
-    },
-  },
-  {
-    id: "node-documentation-1",
-    type: "default",
-    position: { x: 400, y: 950 },
-    data: {
-        instanceId: "documentation-1",
-        name: "Documentation Agent",
-        type: "documentation",
-        label: "Documentation Agent",
-        status: "running",
-        prompt: "Create a quarterly performance report based on the data",
-        model: "DeepSeek-V3",
-        progress: 65,
-        summary: "Document agent generating quarterly performance report",
-        files: [
-            { id: "df1", name: "documentation.pdf", type: "application/pdf", size: 2048000 },
-            { id: "df2", name: "screenshots.zip", type: "application/zip", size: 5120000 },
-        ],
-        feedback: { agent: "none", execution: "none", prompt: "none" },
-        payload: { content: "" },
-    }
-  },
-  {
-    id: "node-computer-use-1",
-    type: "default",
-    position: { x: 400, y: 1150 },
-    data: {
-        instanceId: "computerUse-1",
-        name: "Computer Use Agent",
-        type: "computerUse",
-        label: "Computer Use Agent",
-        status: "pending",
-        prompt: "Navigate to the company dashboard and download the latest reports",
-        model: "LLAMA 3.2",
-        files: [
-            { id: "cuf1", name: "system-log.txt", type: "text/plain", size: 8192 },
-        ],
-        feedback: { agent: "none", execution: "none", prompt: "none" },
-        payload: { timeline: [], screenshot: "/placeholder.svg?height=60&width=100" },
-    }
-  },
+const initialNodes: any[] = [
+  // {
+  //   id: "node-start",
+  //   type: "default",
+  //   position: { x: 400, y: 0 },
+  //   draggable: true,
+  //   selectable: true,
+  //   data: { label: "Starting Point", type: "start" }, // Start node is simpler
+  // },
+  // {
+  //   id: "node-webSearch-1",
+  //   type: "default",
+  //   position: { x: 400, y: 150 },
+  //   data: {
+  //     instanceId: "webSearch-1",
+  //     name: "Web Search Agent",
+  //     type: "webSearch",
+  //     label: "Web Search Agent",
+  //     status: "pending",
+  //     prompt: "Find the latest research on AI workflow automation",
+  //     model: "DeepSeek-R1",
+  //     files: [
+  //       { id: "wsf1", name: "research-paper.pdf", type: "application/pdf", size: 1536000 },
+  //       { id: "wsf2", name: "data-export.csv", type: "text/csv", size: 64000 },
+  //     ],
+  //     feedback: { agent: "none", execution: "none", prompt: "none" },
+  //     payload: { query: "", results: [] },
+  //   },
+  // },
+  // {
+  //   id: "node-voice-1",
+  //   type: "default",
+  //   position: { x: 400, y: 350 },
+  //   data: {
+  //     instanceId: "voice-1",
+  //     name: "Voice Agent",
+  //     type: "voice",
+  //     label: "Voice Agent",
+  //     status: "intervention",
+  //     prompt: "Schedule a meeting with the project team for next week",
+  //     model: "LLAMA 3.2",
+  //     progress: 45,
+  //     lastRun: "5 min ago",
+  //     failureReason: "Unable to access calendar system due to authentication error",
+  //     files: [
+  //       { id: "vf1", name: "voice-notes.txt", type: "text/plain", size: 1024 },
+  //       { id: "vf2", name: "contract.pdf", type: "application/pdf", size: 512000 },
+  //     ],
+  //     feedback: { agent: "none", execution: "none", prompt: "none" },
+  //     payload: { transcript: "", summary: [] },
+  //   },
+  // },
+  // {
+  //   id: "node-email-1",
+  //   type: "default",
+  //   position: { x: 400, y: 550 },
+  //   data: {
+  //     instanceId: "email-1",
+  //     name: "Email Agent",
+  //     type: "email",
+  //     label: "Email Agent",
+  //     status: "pending",
+  //     prompt: "Draft a follow-up email to the client about project status",
+  //     model: "Gemini-2.5-Pro-Exp-03-25",
+  //     files: [
+  //       { id: "ef1", name: "contract.pdf", type: "application/pdf", size: 512000 },
+  //       { id: "ef2", name: "proposal.docx", type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", size: 256000 },
+  //     ],
+  //     feedback: { agent: "none", execution: "none", prompt: "none" },
+  //     payload: { subject: "", content: "", history: [] },
+  //   },
+  // },
+  // {
+  //   id: "node-spreadsheet-1",
+  //   type: "default",
+  //   position: { x: 400, y: 750 },
+  //   data: {
+  //     instanceId: "spreadsheet-1",
+  //     name: "Spreadsheet Agent",
+  //     type: "spreadsheet",
+  //     label: "Spreadsheet Agent",
+  //     status: "success",
+  //     prompt: "Analyze Q1-Q4 expenses and create a summary report",
+  //     model: "Gemini-2.5-Pro-Exp-03-25",
+  //     progress: 100,
+  //     lastRun: "2 min ago",
+  //     files: [
+  //       { id: "ssf1", name: "quarterly-data.xlsx", type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", size: 1024000 },
+  //       { id: "ssf2", name: "report.pdf", type: "application/pdf", size: 512000 },
+  //     ],
+  //     feedback: { agent: "none", execution: "none", prompt: "none" },
+  //     payload: {
+  //       rows: [
+  //         ["A", "B", "C"],
+  //         ["Q1 Expenses", "12,500", "25%"],
+  //         ["Q2 Expenses", "15,750", "31%"],
+  //         ["Q3 Expenses", "9,800", "19%"],
+  //         ["Q4 Expenses", "12,300", "25%"],
+  //         ["Total", "$50,350", "100%"],
+  //       ],
+  //     },
+  //   },
+  // },
+  // {
+  //   id: "node-documentation-1",
+  //   type: "default",
+  //   position: { x: 400, y: 950 },
+  //   data: {
+  //       instanceId: "documentation-1",
+  //       name: "Documentation Agent",
+  //       type: "documentation",
+  //       label: "Documentation Agent",
+  //       status: "running",
+  //       prompt: "Create a quarterly performance report based on the data",
+  //       model: "DeepSeek-V3",
+  //       progress: 65,
+  //       summary: "Document agent generating quarterly performance report",
+  //       files: [
+  //           { id: "df1", name: "documentation.pdf", type: "application/pdf", size: 2048000 },
+  //           { id: "df2", name: "screenshots.zip", type: "application/zip", size: 5120000 },
+  //       ],
+  //       feedback: { agent: "none", execution: "none", prompt: "none" },
+  //       payload: { content: "" },
+  //   }
+  // },
+  // {
+  //   id: "node-computer-use-1",
+  //   type: "default",
+  //   position: { x: 400, y: 1150 },
+  //   data: {
+  //       instanceId: "computerUse-1",
+  //       name: "Computer Use Agent",
+  //       type: "computerUse",
+  //       label: "Computer Use Agent",
+  //       status: "pending",
+  //       prompt: "Navigate to the company dashboard and download the latest reports",
+  //       model: "LLAMA 3.2",
+  //       files: [
+  //           { id: "cuf1", name: "system-log.txt", type: "text/plain", size: 8192 },
+  //       ],
+  //       feedback: { agent: "none", execution: "none", prompt: "none" },
+  //       payload: { timeline: [], screenshot: "/placeholder.svg?height=60&width=100" },
+  //   }
+  // },
 ]
 
-const initialEdges = [
-  { id: "edge-start-webSearch", source: "node-start", target: "node-webSearch-1", type: "animated" },
-  { id: "edge-webSearch-voice-1", source: "node-webSearch-1", target: "node-voice-1", type: "animated" },
-  { id: "edge-voice-1-email-1", source: "node-voice-1", target: "node-email-1", type: "animated" },
-  { id: "edge-email-1-spreadsheet", source: "node-email-1", target: "node-spreadsheet-1", type: "animated" },
-  { id: "edge-spreadsheet-documentation", source: "node-spreadsheet-1", target: "node-documentation-1", type: "animated" },
-  { id: "edge-documentation-computer", source: "node-documentation-1", target: "node-computer-use-1", type: "animated" },
+const initialEdges: any[] = [
+  // { id: "edge-start-webSearch", source: "node-start", target: "node-webSearch-1", type: "animated" },
+  // { id: "edge-webSearch-voice-1", source: "node-webSearch-1", target: "node-voice-1", type: "animated" },
+  // { id: "edge-voice-1-email-1", source: "node-voice-1", target: "node-email-1", type: "animated" },
+  // { id: "edge-email-1-spreadsheet", source: "node-email-1", target: "node-spreadsheet-1", type: "animated" },
+  // { id: "edge-spreadsheet-documentation", source: "node-spreadsheet-1", target: "node-documentation-1", type: "animated" },
+  // { id: "edge-documentation-computer", source: "node-documentation-1", target: "node-computer-use-1", type: "animated" },
 ]
 
 interface WorkflowCanvasProps {
@@ -1546,6 +1547,7 @@ export const WorkflowCanvas = forwardRef<any, WorkflowCanvasProps>(function Work
   { onNodesChange, additionalNodes = [] },
   ref,
 ) {
+  const [limit, setLimit] = useState(true)
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
   const [nodes, setNodes, onNodesChangeInternal] = useNodesState(initialNodes)
 
@@ -1580,6 +1582,7 @@ export const WorkflowCanvas = forwardRef<any, WorkflowCanvasProps>(function Work
     [setEdges],
   )
 
+  
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault()
     event.dataTransfer.dropEffect = "move"
@@ -1589,6 +1592,12 @@ export const WorkflowCanvas = forwardRef<any, WorkflowCanvasProps>(function Work
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
+      if(limit) {
+        toast.error("Workflow limit reached", {
+          description: "The system is currently under heavy load. Please try again in a moment.",
+        })
+        return
+      }
       event.preventDefault();
 
       const reactFlowBounds = reactFlowWrapper.current?.getBoundingClientRect();
@@ -1668,6 +1677,19 @@ export const WorkflowCanvas = forwardRef<any, WorkflowCanvasProps>(function Work
           <Background gap={18} size={1} color="#6B6B70" />
           <Controls />
         </ReactFlow>
+        {nodes.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden="true">
+            <div className="text-center p-8 border-2 border-dashed border-border rounded-xl bg-background/80 backdrop-blur-sm">
+                <div className="flex justify-center mb-4">
+                    <div className="bg-muted p-3 rounded-full">
+                        <Plus className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                </div>
+                <p className="text-lg font-semibold">Start Workflow</p>
+                <p className="text-xs text-muted-foreground">Describe your workflow</p>
+            </div>
+          </div>
+        )}
       </ReactFlowProvider>
     </div>
   )

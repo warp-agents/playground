@@ -2,7 +2,7 @@ import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { Editor } from '@tiptap/react';
 
-export const ngrokUrl = "https://7206-34-125-51-148.ngrok-free.app"
+export const ngrokUrl = process.env.NGROK_URL || "https://7315-34-30-240-207.ngrok-free.app"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))

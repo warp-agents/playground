@@ -59,11 +59,10 @@ export function GPTInputPopover({
   
         const body = JSON.stringify({
           system_prompt: systemPrompt,
-          model: "gpt-4o-mini-2024-07-18",
           prompt: inputValue,
         });
   
-        const response = await fetch(`${baseUrl}/generate`, {
+        const response = await fetch(`${baseUrl}/generate-lite`, {
           method: 'POST',
           headers,
           body,
